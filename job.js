@@ -14,21 +14,28 @@ if(!canWrite(process.uid === stat.uid, process.gid === stat.gid, stat.mode)) {
     });
 }
 
+// define options
+var start = args.s || args.start;
+var pause = args.p || args.pause;
+var resume = args.r || args.resume;
+var end = args.e || args.end;
+var last = args.l || args.last;
+
 var config;
 try {
-    config = JSON.parse(fs.readFileSync(CONFIG_FILE));
+    config = require(CONFIG_FILE);
 } catch(e) {
     // We don't care, because we default to current dir anyway
 }
 var TIME_FILE = config.path || path.join(process.cwd(), 'time.json');
 
-if(args.start){
+if(start){
     pleaseEnter('start');
     var jobs = { };
 
     try {
-        var j = JSON.parse(fs.readFileSync(TIME_FILE, {encoding: 'utf8'})),
-            d = j[args.start];
+        var j = require(TIME_FILE),
+            d = j[start];
 
         if(d && !~d.endMs){
             throw new Error('Already started timer on ' + d.startTimeSlice);
@@ -50,7 +57,7 @@ if(args.start){
     print('Started timer at ' + timeSlice);
 
     jobs[args.start] = {
-        ticket: args.start, // Only here for the --last flag
+        ticket: start, // Only here for the --last flag
         startMs: Date.now(),
         endMs: -1,
         pausesMs: [],
@@ -60,15 +67,15 @@ if(args.start){
         endTimeSlice: ''
     };
     fs.writeFileSync(TIME_FILE, JSON.stringify(jobs, null, 4));
-} else if(args.pause){
+} else if(pause){
     pleaseEnter('pause');
 
     var jobs    = null,
         lastJob = null;
 
     try {
-        jobs    = JSON.parse(fs.readFileSync(TIME_FILE, {encoding: 'utf8'})),
-        lastJob = jobs[args.pause];
+        jobs    = require(TIME_FILE),
+        lastJob = jobs[pause];
 
         var totalPauses = lastJob.pausesMs.length;
         if(totalPauses > 0 && totalPauses%2){
@@ -87,15 +94,15 @@ if(args.start){
     print('Pausing timer at ' + getTimeSlice(new Date()));
     lastJob.pausesMs.push(Date.now());
     fs.writeFileSync(TIME_FILE, JSON.stringify(jobs, null, 4));
-} else if(args.resume){
+} else if(resume){
     pleaseEnter('resume');
 
     var jobs    = null,
         lastJob = null;
 
     try {
-        jobs      = JSON.parse(fs.readFileSync(TIME_FILE, {encoding: 'utf8'})),
-        lastJob   = jobs[args.resume];
+        jobs      = require(TIME_FILE),
+        lastJob   = jobs[resume];
 
         var totalPauses = lastJob.pausesMs.length;
         if(!totalPauses || !(totalPauses%2)){
@@ -114,16 +121,16 @@ if(args.start){
     print('Resuming timer at ' + getTimeSlice(new Date()));
     lastJob.pausesMs.push(Date.now());
     fs.writeFileSync(TIME_FILE, JSON.stringify(jobs, null, 4));
-} else if(args.stop){
-    pleaseEnter('stop');
+} else if(end){
+    pleaseEnter('end');
 
     var jobs = {
         data: []
     };
 
     try {
-        var j = JSON.parse(fs.readFileSync(TIME_FILE, {encoding: 'utf8'})),
-            d = j[args.stop];
+        var j = require(TIME_FILE),
+            d = j[end];
 
         if(d && ~d.endMs){
             throw new Error('Previous job finished. Run \'node job.js start\' to start another timer.');
@@ -139,7 +146,7 @@ if(args.start){
         return;
     }
 
-    var lastJob = jobs[args.stop];
+    var lastJob = jobs[end];
 
     lastJob.endMs        = Date.now();
     lastJob.endTimeSlice = getTimeSlice(new Date());
@@ -174,13 +181,11 @@ if(args.start){
 
     print('Ended timer at ' + lastJob.endTimeSlice);
     print('Jira format: ' + lastJob.jira);
-} else if(args.last) {
+} else if(last) {
 
     // This gets slightly different here
     try {
-        var jobs = JSON.parse(fs.readFileSync(TIME_FILE, {
-            encoding:'utf8'
-        }));
+        var jobs = require(TIME_FILE);
     } catch(e) {
         print("\nFile inaccessible... Are you sure you have stored data?");
         return;
@@ -221,9 +226,7 @@ if(args.start){
     print('The logging path has been changed to the current working directory.');
 } else if(args['list-jobs']){
     try {
-        var jobs = JSON.parse(fs.readFileSync(TIME_FILE, {
-            encoding:'utf8'
-        }));
+        var jobs = require(TIME_FILE);
     } catch(e) {
         print("\nFile inaccessible... Are you sure you have stored data?");
         return;
@@ -291,36 +294,20 @@ if(args.start){
     print('Use \'jiratrack --help\' to see a list of commands.');
 }
 
-// returns a Jira ready format to log work e.g. 3h 30m
-function getJiraFormat(ms){
-    var x = ms / 1000;
-    // In case we need it
-    // seconds = Math.floor(x % 60);
-    x /= 60;
-    minutes = Math.round(x % 60);
-    x /= 60;
-    hours = Math.floor(x % 24);
-    x /= 24;
-    days = Math.floor(x % 7);
-    x /= 7;
-    weeks = Math.floor(x);
-
-    // Rounding normalization
-    if(minutes == 60){
-        minutes = 0;
-        hours++;
-    }
-    if(hours == 24){
-        hours = 0;
-        days++;
-    }
-    if(days == 7){
-        days = 0;
-        weeks++;
-    }
-
-    var ret = (weeks ? weeks + 'w ' : '') + (days ? days + 'd ' : '') + (hours ? hours + 'h ' : '') + (minutes ? minutes + 'm' : '');
-    return ret != '' ? ret : (ms + 'ms too small to process.');
+/**
+ * Converts a time in milliseconds to a readable string
+ *
+ * @param ms            the time in millis to convert
+ * @returns {string}    a human readable string
+ */
+function getJiraFormat(ms) {
+    var millis = ms % 1000,
+        ms = (ms - millis) / 1000,
+        secs = ms % 60,
+        ms = (ms - secs) / 60,
+        mins = ms % 60,
+        hrs = (ms - mins) / 60;
+    return (hrs ? hrs + 'h ' : '') + (mins ? mins + 'm ' : '') + (secs ? secs + 's' : mins ? '\b' : hrs ? '\b' : '');
 }
 
 // Check if file is writable

@@ -37,7 +37,7 @@ Commands
 However, jiratrack is not case-sensitive, so ```jiratrack --start TIMOB-123``` is different from
 ```jiratrack --start timob-123```.
 
-### --start <TICKET_NUM>
+### -s, --start <TICKET_NUM>
 Starts the job timer e.g.
 
 ```javascript
@@ -45,7 +45,7 @@ $ jiratrack --start TIMOB-1234
 Started timer at Tue Mar 11 2014 22:12:08 GMT-0700 (PDT)
 ```
 
-### --pause <TICKET_NUM>
+### -p, --pause <TICKET_NUM>
 Pause the job timer.
 
 **Note:** Can only be used after calling the --start flag or the --resume flag.
@@ -64,7 +64,7 @@ $ jiratrack --pause TIMOB-1234
 Pausing timer at Tue Mar 11 2014 22:45:02 GMT-0700 (PDT)
 ```
 
-### --resume <TICKET_NUM>
+### -r, --resume <TICKET_NUM>
 Resume the job timer.
 
 **Note:** Can only be used after using the --pause flag.
@@ -80,16 +80,16 @@ $ jiratrack --resume TIMOB-1234
 Resuming timer at Tue Mar 11 2014 22:43:13 GMT-0700 (PDT)
 ```
 
-### --stop <TICKET_NUM>
+### -e, --end <TICKET_NUM>
 Stops the job timer and returns the tracked work time in Jira format e.g.
 
 ```javascript
-$ jiratrack --stop TIMOB-1234
+$ jiratrack --end TIMOB-1234
 Ended timer at Tue Mar 11 2014 22:19:18 GMT-0700 (PDT)
 Jira format: 2m
 ```
 
-### --last
+### -l, --last
 Shows the last finished job in JSON e.g.
 
 ```javascript
